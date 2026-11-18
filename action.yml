@@ -1,0 +1,81 @@
+name: 'Patch Pilot Autonomous SWE Agent'
+description: 'Automatically diagnose failing CI tests, generate code patches, and self-heal your repo using AI.'
+author: 'Shubhransh Gupta'
+branding:
+  icon: 'git-pull-request'
+  color: 'green'
+
+inputs:
+  api-key:
+    description: 'API key for the selected AI provider (Gemini, Claude, OpenAI, DeepSeek, etc.)'
+    required: true
+  provider:
+    description: 'AI provider: gemini, anthropic, openai, deepseek, or ollama'
+    required: false
+    default: 'gemini'
+  model:
+    description: 'Specific model string (e.g. claude-3-5-sonnet-20241022, gpt-4o, gemini-2.5-flash)'
+    required: false
+    default: ''
+  issue:
+    description: 'Issue or bug description to resolve'
+    required: false
+    default: 'Diagnose and fix failing automated test suite'
+  test-command:
+    description: 'Custom test command to run (e.g. pytest or npm test)'
+    required: false
+    default: ''
+  max-attempts:
+    description: 'Maximum self-healing iterations'
+    required: false
+    default: '4'
+
+outputs:
+  branch:
+    description: 'Name of the git branch created with the fix'
+    value: ${{ steps.run-patch-pilot.outputs.branch }}
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+
+    - name: Install Patch Pilot
+      shell: bash
+      run: |
+        python -m pip install --upgrade pip
+        pip install git+https://github.com/shubhransh-gupta/patch-pilot.git
+
+    - name: Configure Git Identity
+      shell: bash
+      run: |
+        git config --global user.name "Patch Pilot Bot"
+        git config --global user.email "bot@patchpilot.ai"
+
+    - name: Run Patch Pilot Self-Healing
+      id: run-patch-pilot
+      shell: bash
+      env:
+        GEMINI_API_KEY: ${{ inputs.api-key }}
+        ANTHROPIC_API_KEY: ${{ inputs.api-key }}
+        OPENAI_API_KEY: ${{ inputs.api-key }}
+        DEEPSEEK_API_KEY: ${{ inputs.api-key }}
+      run: |
+        ARGS="\"${{ inputs.issue }}\""
+        if [ -n "${{ inputs.provider }}" ]; then
+          ARGS="$ARGS --provider ${{ inputs.provider }}"
+        fi
+        if [ -n "${{ inputs.model }}" ]; then
+          ARGS="$ARGS --model ${{ inputs.model }}"
+        fi
+        if [ -n "${{ inputs.test-command }}" ]; then
+          ARGS="$ARGS --test-cmd \"${{ inputs.test-command }}\""
+        fi
+        if [ -n "${{ inputs.max-attempts }}" ]; then
+          ARGS="$ARGS --max-attempts ${{ inputs.max-attempts }}"
+        fi
+        
+        eval patch-pilot $ARGS

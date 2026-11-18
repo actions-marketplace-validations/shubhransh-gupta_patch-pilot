@@ -1,0 +1,27 @@
+name: Patch Pilot Self-Healing CI
+
+on:
+  workflow_dispatch:
+  issue_comment:
+    types: [created]
+
+jobs:
+  heal:
+    if: contains(github.event.comment.body, '/heal') || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Run Patch Pilot Action
+        uses: shubhransh-gupta/patch-pilot@v1
+        with:
+          api-key: ${{ secrets.GEMINI_API_KEY }}
+          provider: 'gemini'
+          issue: 'Fix failing unit tests in test suite'

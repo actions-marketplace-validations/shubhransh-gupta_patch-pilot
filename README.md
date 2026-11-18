@@ -6,6 +6,10 @@
 
 > **📖 Live Documentation & Interactive FAQs:** [https://agent-docs-coral.vercel.app#patch-pilot](https://agent-docs-coral.vercel.app#patch-pilot)
 
+<p align="center">
+  <img src="assets/demo.svg" alt="Patch Pilot Live Terminal Demo" width="100%" />
+</p>
+
 An autonomous test-driven code healing and bug patching agent with **universal model support**.
 
 Patch Pilot inspects your local repository, analyzes bug descriptions, pinpoints root-cause files, iteratively applies patches, executes your test suite, and feeds back error stack traces until tests pass and changes are committed cleanly to Git.
@@ -39,6 +43,19 @@ Patch Pilot works with all major AI providers or entirely local setups:
 git clone https://github.com/shubhransh-gupta/patch-pilot.git
 cd patch-pilot
 pip install -e .
+```
+
+### ⚡ Use as a GitHub Action in Your CI/CD
+
+You can drop Patch Pilot directly into any repository's CI pipeline to automatically self-heal failing builds:
+
+```yaml
+- name: Run Patch Pilot Self-Healing
+  uses: shubhransh-gupta/patch-pilot@v1
+  with:
+    api-key: ${{ secrets.GEMINI_API_KEY }}
+    provider: 'gemini'
+    issue: 'Fix failing unit tests in CI build'
 ```
 
 ### 2. Set Your Preferred API Key
