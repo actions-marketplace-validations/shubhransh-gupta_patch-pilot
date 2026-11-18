@@ -53,18 +53,62 @@ cd patch-pilot
 pip install -e .
 ```
 
-### ⚡ Use as a GitHub Action in Your CI/CD
+## 🔄 How to Use in Any Other Project (GitHub Action CI/CD)
 
-You can drop Patch Pilot directly into any repository's CI pipeline to automatically self-heal failing builds:
+You can drop **Patch Pilot** directly into **any repository's CI pipeline** to automatically diagnose failing tests and self-heal your code.
+
+Available on the **GitHub Marketplace**: [`shubhransh-gupta/patch-pilot@v1`](https://github.com/shubhransh-gupta/patch-pilot)
+
+### 1. Configure Your AI Provider Secret
+In your target repository:
+1. Navigate to **Settings** → **Secrets and variables** → **Actions** → **New repository secret**.
+2. Name the secret `GEMINI_API_KEY` (or `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `DEEPSEEK_API_KEY`) and paste your API key.
+
+### 2. Create the Workflow File
+Add a new workflow file at `.github/workflows/self-heal-ci.yml`:
 
 ```yaml
-- name: Run Patch Pilot Self-Healing
-  uses: shubhransh-gupta/patch-pilot@v1
-  with:
-    api-key: ${{ secrets.GEMINI_API_KEY }}
-    provider: 'gemini'
-    issue: 'Fix failing unit tests in CI build'
+name: Patch Pilot Self-Healing CI
+
+on:
+  workflow_dispatch:
+  issue_comment:
+    types: [created]
+
+jobs:
+  heal:
+    # Triggers manually or when a PR comment contains '/heal'
+    if: contains(github.event.comment.body, '/heal') || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Run Patch Pilot Self-Healing
+        uses: shubhransh-gupta/patch-pilot@v1
+        with:
+          api-key: ${{ secrets.GEMINI_API_KEY }}
+          provider: 'gemini'
+          issue: 'Fix failing unit tests in test suite'
+          max-attempts: '4'
 ```
+
+### Action Inputs Reference
+
+| Input | Required | Default | Description |
+| :--- | :--- | :--- | :--- |
+| `api-key` | **Yes** | &mdash; | AI provider API key (pass via `${{ secrets.GEMINI_API_KEY }}`) |
+| `provider` | No | `gemini` | `gemini`, `anthropic`, `openai`, `deepseek` |
+| `model` | No | Auto | Specific model override (e.g. `gemini-3-flash-preview`, `claude-3-5-sonnet`) |
+| `issue` | No | Auto | Bug description or instruction to heal |
+| `test-command` | No | Auto | Custom test command override (e.g. `pytest tests/test_core.py`) |
+| `max-attempts` | No | `4` | Maximum healing iterations before stopping |
 
 ### 2. Set Your Preferred API Key
 
