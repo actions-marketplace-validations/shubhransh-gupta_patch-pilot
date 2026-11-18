@@ -108,10 +108,8 @@ class UnifiedLLM:
     def _call_gemini(self, prompt: str, system_instruction: Optional[str]) -> str:
         models_to_try = [
             self.model,
-            "gemini-3-flash-preview",
             "gemini-3.1-flash-lite-preview",
-            "gemma-4-26b-a4b-it",
-            "gemini-3.8-flash",
+            "gemini-3-flash-preview",
             "gemini-flash-latest",
         ]
         unique_models = [m for m in dict.fromkeys(models_to_try) if m]
