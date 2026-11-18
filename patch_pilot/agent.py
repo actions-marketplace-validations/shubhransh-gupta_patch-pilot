@@ -12,6 +12,7 @@ from typing import Optional, Dict, Any, List
 from .config import PatchConfig
 from .git_ops import GitRepo
 from .runner import TestRunner, TestResult
+from .llm import UnifiedLLM
 
 logger = logging.getLogger(__name__)
 
@@ -30,50 +31,16 @@ class PatchPilotAgent:
             custom_cmd=self.config.test_command,
             timeout=self.config.timeout_per_run
         )
-        self._init_gemini()
-
-    def _init_gemini(self):
-        try:
-            from google import genai
-            self.client = genai.Client(api_key=self.config.api_key)
-            self._use_sdk = True
-        except ImportError:
-            self._use_sdk = False
+        self.llm = UnifiedLLM(
+            provider=self.config.provider,
+            model=self.config.model,
+            api_key=self.config.api_key,
+            base_url=self.config.base_url,
+            timeout=self.config.timeout_per_run * 2,
+        )
 
     def _call_llm(self, prompt: str, system_prompt: Optional[str] = None) -> str:
-        models = [self.config.model] + [m for m in self.config.fallback_models if m != self.config.model]
-        last_err = None
-        for m in models:
-            try:
-                if self._use_sdk:
-                    from google.genai import types
-                    cfg = {}
-                    if system_prompt:
-                        cfg["system_instruction"] = system_prompt
-                    res = self.client.models.generate_content(
-                        model=m,
-                        contents=prompt,
-                        config=types.GenerateContentConfig(**cfg) if cfg else None
-                    )
-                    if res and res.text:
-                        return res.text
-                else:
-                    return self._call_llm_rest(m, prompt, system_prompt)
-            except Exception as e:
-                last_err = e
-        raise RuntimeError(f"All Gemini models failed. Last error: {last_err}")
-
-    def _call_llm_rest(self, model: str, prompt: str, system_prompt: Optional[str]) -> str:
-        import requests
-        url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={self.config.api_key}"
-        contents = []
-        if system_prompt:
-            contents.append({"role": "user", "parts": [{"text": f"SYSTEM: {system_prompt}"}]})
-        contents.append({"role": "user", "parts": [{"text": prompt}]})
-        resp = requests.post(url, json={"contents": contents}, timeout=60)
-        resp.raise_for_status()
-        data = resp.json()
-        return data["candidates"][0]["content"]["parts"][0]["text"]
+        return self.llm.generate(prompt, system_instruction=system_prompt)
 
     def _collect_repo_files(self) -> List[str]:
         """Lists files in the repository excluding common ignore paths."""

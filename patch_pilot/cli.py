@@ -20,20 +20,22 @@ BANNER = """[bold green]
  / ___/ _ `/ __/ __/ _ \\/___/ ___/ / / _ \\/ __/
 /_/   \\_,_/\\__/\\__/_//_/   /_/  /_/_/\\___/\\__/  
 [/bold green]
-[dim]🤖 Autonomous Test-Driven Code Healing & Bug Patching Agent powered by Gemini[/dim]
+[dim]🤖 Autonomous Code Healing & Bug Patching • Gemini | Claude | GPT | DeepSeek | Nemotron[/dim]
 """
 
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Patch Pilot — Autonomous Test-Driven Bug Patching Agent"
+        description="Patch Pilot — Autonomous Test-Driven Bug Patching Agent supporting Gemini, Claude, GPT, DeepSeek, and Ollama"
     )
     parser.add_argument("issue", nargs="?", help="Description of the bug or issue to resolve.")
     parser.add_argument("--repo", "-r", type=str, default=".", help="Path to local git repo (default: current directory)")
+    parser.add_argument("--provider", "-p", type=str, default=None, help="LLM Provider: gemini, openai, anthropic, deepseek, nvidia, ollama, openrouter")
+    parser.add_argument("--model", "-m", type=str, default=None, help="Model identifier (e.g. claude-3-5-sonnet, gpt-4o, gemini-2.5-flash)")
     parser.add_argument("--test-cmd", "-t", type=str, default=None, help="Custom test command (e.g. 'pytest tests/test_auth.py')")
-    parser.add_argument("--max-attempts", "-m", type=int, default=4, help="Max healing iterations (default: 4)")
-    parser.add_argument("--model", type=str, default="gemini-2.5-flash", help="Gemini model identifier")
-    parser.add_argument("--api-key", "-k", type=str, default=None, help="Gemini API Key override")
+    parser.add_argument("--max-attempts", type=int, default=4, help="Max healing iterations (default: 4)")
+    parser.add_argument("--api-key", "-k", type=str, default=None, help="API Key override")
+    parser.add_argument("--base-url", type=str, default=None, help="Custom API Base URL (for Ollama, vLLM, etc.)")
     parser.add_argument("--no-branch", action="store_true", help="Do not create a git branch")
 
     args = parser.parse_args()
@@ -54,8 +56,10 @@ def main():
         sys.exit(1)
 
     config = PatchConfig(
-        api_key=args.api_key,
+        provider=args.provider,
         model=args.model,
+        api_key=args.api_key,
+        base_url=args.base_url,
         max_healing_attempts=args.max_attempts,
         test_command=args.test_cmd,
         target_repo_dir=repo_path,
@@ -68,15 +72,15 @@ def main():
         console.print(Panel(f"[bold red]Configuration Error:[/bold red]\n{str(e)}", border_style="red"))
         sys.exit(1)
 
+    agent = PatchPilotAgent(config=config)
+
     console.print(Panel(
         f"[bold white]Repo:[/bold white] {repo_path}\n"
         f"[bold white]Issue:[/bold white] {issue}\n"
-        f"[bold white]Model:[/bold white] {config.model}",
+        f"[bold white]Provider:[/bold white] {agent.llm.provider.upper()} | [bold white]Model:[/bold white] {agent.llm.model}",
         title="[bold green]Mission Activated[/bold green]",
         border_style="green"
     ))
-
-    agent = PatchPilotAgent(config=config)
 
     with console.status("[bold green]Patch Pilot diagnosing and healing code...[/bold green]", spinner="dots") as status:
         def on_step(msg: str):

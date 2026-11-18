@@ -1,5 +1,5 @@
 """
-Configuration for Patch Pilot agent.
+Configuration for Patch Pilot agent supporting multiple LLM providers.
 """
 
 import os
@@ -31,15 +31,10 @@ load_env()
 
 @dataclass
 class PatchConfig:
-    api_key: Optional[str] = field(default_factory=lambda: os.getenv("GEMINI_API_KEY"))
-    model: str = "gemini-2.5-flash"
-    fallback_models: List[str] = field(default_factory=lambda: [
-        "gemini-2.5-flash",
-        "gemini-1.5-flash",
-        "gemini-2.5-pro",
-        "gemini-1.5-pro",
-        "gemini-4-hydrogen"
-    ])
+    provider: Optional[str] = None
+    model: Optional[str] = None
+    api_key: Optional[str] = None
+    base_url: Optional[str] = None
     max_healing_attempts: int = 4
     test_command: Optional[str] = None
     timeout_per_run: int = 45
@@ -48,9 +43,24 @@ class PatchConfig:
     branch_prefix: str = "fix/patch-pilot"
 
     def validate(self):
-        if not self.api_key:
+        available_keys = [
+            self.api_key,
+            os.getenv("GEMINI_API_KEY"),
+            os.getenv("OPENAI_API_KEY"),
+            os.getenv("ANTHROPIC_API_KEY"),
+            os.getenv("OPENROUTER_API_KEY"),
+            os.getenv("DEEPSEEK_API_KEY"),
+            os.getenv("NVIDIA_API_KEY"),
+            self.base_url,
+        ]
+        if not any(available_keys):
             raise ValueError(
-                "GEMINI_API_KEY is not set.\n"
-                "Please set it via environment variable: export GEMINI_API_KEY='your-key'\n"
-                "Get a free Gemini API key at: https://aistudio.google.com/"
+                "No API Key found.\n"
+                "Please set one of the following environment variables:\n"
+                "  • export GEMINI_API_KEY='...'\n"
+                "  • export OPENAI_API_KEY='...'\n"
+                "  • export ANTHROPIC_API_KEY='...'\n"
+                "  • export DEEPSEEK_API_KEY='...'\n"
+                "  • export NVIDIA_API_KEY='...'\n"
+                "Or pass --api-key / --base-url."
             )
