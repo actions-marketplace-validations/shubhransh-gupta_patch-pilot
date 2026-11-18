@@ -20,6 +20,7 @@ class TestResult:
 
 class TestRunner:
     """Detects and runs project tests."""
+    __test__ = False
 
     def __init__(self, repo_dir: Path, custom_cmd: Optional[str] = None, timeout: int = 45):
         self.repo_dir = repo_dir

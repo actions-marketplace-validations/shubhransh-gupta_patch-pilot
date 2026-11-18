@@ -73,6 +73,21 @@ class PatchPilotAgent:
         test_cmd = self.runner.detect_test_command()
         log(f"Target test command: `{test_cmd}`")
 
+        # Check initial tests: if already passing, no healing required
+        log(f"Executing initial test verification (`{test_cmd}`)...")
+        init_res = self.runner.run_tests(test_cmd)
+        if init_res.passed:
+            log("✅ All tests are already passing cleanly! No patching required.")
+            return {
+                "success": True,
+                "message": "All tests already passing cleanly.",
+                "branch": None,
+                "attempts": 0,
+                "patched_files": []
+            }
+        log(f"Initial test failure confirmed (exit code {init_res.exit_code}).")
+        last_test_output = init_res.output_summary
+
         # 3. Create branch if git repo
         branch_name = None
         if self.git.is_git_repo() and self.config.create_branch:
@@ -110,14 +125,16 @@ Return ONLY a JSON list of 1 to 3 relative file paths. Example:
             if fp.is_file():
                 try:
                     with open(fp, "r", encoding="utf-8") as f:
-                        context_files[tf] = f.read()
+                        c = f.read()
+                        if len(c) > 15000:
+                            c = c[:15000] + "\n...[truncated]..."
+                        context_files[tf] = c
                 except Exception:
                     pass
 
         # 5. Iterative Self-Healing Loop
         attempt = 0
         tests_passed = False
-        last_test_output = ""
         patched_files = []
 
         while attempt < self.config.max_healing_attempts and not tests_passed:

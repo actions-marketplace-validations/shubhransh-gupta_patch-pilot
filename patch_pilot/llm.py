@@ -4,6 +4,7 @@ Unified multi-provider LLM interface for Patch Pilot supporting Gemini, Claude, 
 
 import os
 import json
+import time
 import logging
 from typing import Optional, Dict, Any, List
 import requests
@@ -117,23 +118,28 @@ class UnifiedLLM:
 
         last_error = None
         for m in unique_models:
-            try:
-                url = f"https://generativelanguage.googleapis.com/v1beta/models/{m}:generateContent?key={self.api_key}"
-                contents = []
-                if system_instruction:
-                    contents.append({"role": "user", "parts": [{"text": f"SYSTEM: {system_instruction}"}]})
-                contents.append({"role": "user", "parts": [{"text": prompt}]})
-                resp = requests.post(url, json={"contents": contents}, timeout=12)
-                if resp.status_code == 200:
-                    data = resp.json()
-                    candidates = data.get("candidates", [])
-                    if candidates and "content" in candidates[0]:
-                        parts = candidates[0]["content"].get("parts", [])
-                        if parts and "text" in parts[0]:
-                            return parts[0]["text"]
-                last_error = f"{m} HTTP {resp.status_code}: {resp.text[:100]}"
-            except Exception as e:
-                last_error = e
+            for retry in range(2):
+                try:
+                    url = f"https://generativelanguage.googleapis.com/v1beta/models/{m}:generateContent?key={self.api_key}"
+                    contents = []
+                    if system_instruction:
+                        contents.append({"role": "user", "parts": [{"text": f"SYSTEM: {system_instruction}"}]})
+                    contents.append({"role": "user", "parts": [{"text": prompt}]})
+                    resp = requests.post(url, json={"contents": contents}, timeout=20)
+                    if resp.status_code == 200:
+                        data = resp.json()
+                        candidates = data.get("candidates", [])
+                        if candidates and "content" in candidates[0]:
+                            parts = candidates[0]["content"].get("parts", [])
+                            if parts and "text" in parts[0]:
+                                return parts[0]["text"]
+                    elif resp.status_code in (503, 429):
+                        time.sleep(2)
+                        continue
+                    last_error = f"{m} HTTP {resp.status_code}: {resp.text[:100]}"
+                    break
+                except Exception as e:
+                    last_error = e
 
         raise RuntimeError(f"All Gemini models failed. Last error: {last_error}")
 
