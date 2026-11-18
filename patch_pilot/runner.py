@@ -2,6 +2,8 @@
 Subprocess test runner and automatic framework detector.
 """
 
+import os
+import sys
 import subprocess
 from pathlib import Path
 from typing import Tuple, Optional
@@ -55,6 +57,11 @@ class TestRunner:
     def run_tests(self, command: Optional[str] = None) -> TestResult:
         """Executes test suite and captures output."""
         cmd_str = command or self.detect_test_command()
+        env = os.environ.copy()
+        py_bin_dir = str(Path(sys.executable).parent)
+        if py_bin_dir not in env.get("PATH", ""):
+            env["PATH"] = f"{py_bin_dir}:{env.get('PATH', '')}"
+
         try:
             res = subprocess.run(
                 cmd_str,
@@ -62,7 +69,8 @@ class TestRunner:
                 shell=True,
                 capture_output=True,
                 text=True,
-                timeout=self.timeout
+                timeout=self.timeout,
+                env=env
             )
             passed = (res.returncode == 0)
             combined_output = (res.stdout + "\n" + res.stderr).strip()

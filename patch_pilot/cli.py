@@ -106,7 +106,7 @@ def main():
         table.add_row("Git Branch", result["branch"])
     if result.get("commit_message"):
         table.add_row("Git Commit", result["commit_message"])
-    table.add_row("Test Suite", result["test_command"])
+    table.add_row("Test Suite", result.get("test_command", "Unknown"))
 
     console.print("\n")
     console.print(table)

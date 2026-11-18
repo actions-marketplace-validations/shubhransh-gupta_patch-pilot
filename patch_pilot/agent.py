@@ -83,7 +83,10 @@ class PatchPilotAgent:
                 "message": "All tests already passing cleanly.",
                 "branch": None,
                 "attempts": 0,
-                "patched_files": []
+                "patched_files": [],
+                "commit_message": "",
+                "diff": "",
+                "test_command": test_cmd,
             }
         log(f"Initial test failure confirmed (exit code {init_res.exit_code}).")
         last_test_output = init_res.output_summary
