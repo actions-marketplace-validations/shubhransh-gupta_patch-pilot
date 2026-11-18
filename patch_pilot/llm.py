@@ -69,7 +69,7 @@ class UnifiedLLM:
 
     def _default_model_for_provider(self, provider: str) -> str:
         defaults = {
-            "gemini": "gemini-3-flash-preview",
+            "gemini": "gemini-2.5-flash",
             "openai": "gpt-4o",
             "anthropic": "claude-3-5-sonnet-20241022",
             "openrouter": "meta-llama/llama-3.3-70b-instruct",
@@ -77,7 +77,7 @@ class UnifiedLLM:
             "nvidia": "nvidia/nemotron-4-340b-instruct",
             "ollama": "llama3.2",
         }
-        return defaults.get(provider, "gemini-3-flash-preview")
+        return defaults.get(provider, "gemini-2.5-flash")
 
     def _resolve_api_key(self):
         if self.api_key:
@@ -108,12 +108,15 @@ class UnifiedLLM:
     def _call_gemini(self, prompt: str, system_instruction: Optional[str]) -> str:
         models_to_try = [
             self.model,
-            "gemini-3.1-flash-lite-preview",
+            "gemini-2.5-flash",
+            "gemini-2.5-pro",
+            "gemini-1.5-flash",
             "gemini-3-flash-preview",
             "gemini-flash-latest",
         ]
         unique_models = [m for m in dict.fromkeys(models_to_try) if m]
 
+        request_timeout = max(self.timeout, 90)
         last_error = None
         for m in unique_models:
             for retry in range(2):
@@ -123,7 +126,7 @@ class UnifiedLLM:
                     if system_instruction:
                         contents.append({"role": "user", "parts": [{"text": f"SYSTEM: {system_instruction}"}]})
                     contents.append({"role": "user", "parts": [{"text": prompt}]})
-                    resp = requests.post(url, json={"contents": contents}, timeout=20)
+                    resp = requests.post(url, json={"contents": contents}, timeout=request_timeout)
                     if resp.status_code == 200:
                         data = resp.json()
                         candidates = data.get("candidates", [])
