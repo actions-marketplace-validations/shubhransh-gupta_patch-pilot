@@ -39,6 +39,14 @@ Patch Pilot works with all major AI providers or entirely local setups:
 
 ### 1. Installation
 
+Install directly from PyPI:
+
+```bash
+pip install patch-pilot-ai
+```
+
+Or install from source:
+
 ```bash
 git clone https://github.com/shubhransh-gupta/patch-pilot.git
 cd patch-pilot
