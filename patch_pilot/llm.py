@@ -54,7 +54,7 @@ class UnifiedLLM:
 
         # Check environment variable presence
         if os.getenv("GEMINI_API_KEY"):
-            return "gemini", model or "gemini-2.5-flash"
+            return "gemini", model or "gemini-3-flash-preview"
         if os.getenv("OPENAI_API_KEY"):
             return "openai", model or "gpt-4o"
         if os.getenv("ANTHROPIC_API_KEY"):
@@ -64,11 +64,11 @@ class UnifiedLLM:
         if os.getenv("DEEPSEEK_API_KEY"):
             return "deepseek", model or "deepseek-chat"
 
-        return "gemini", model or "gemini-2.5-flash"
+        return "gemini", model or "gemini-3-flash-preview"
 
     def _default_model_for_provider(self, provider: str) -> str:
         defaults = {
-            "gemini": "gemini-2.5-flash",
+            "gemini": "gemini-3-flash-preview",
             "openai": "gpt-4o",
             "anthropic": "claude-3-5-sonnet-20241022",
             "openrouter": "meta-llama/llama-3.3-70b-instruct",
@@ -76,7 +76,7 @@ class UnifiedLLM:
             "nvidia": "nvidia/nemotron-4-340b-instruct",
             "ollama": "llama3.2",
         }
-        return defaults.get(provider, "gemini-2.5-flash")
+        return defaults.get(provider, "gemini-3-flash-preview")
 
     def _resolve_api_key(self):
         if self.api_key:
@@ -105,32 +105,37 @@ class UnifiedLLM:
             return self._call_gemini(prompt, system_instruction)
 
     def _call_gemini(self, prompt: str, system_instruction: Optional[str]) -> str:
-        try:
-            from google import genai
-            from google.genai import types
-            client = genai.Client(api_key=self.api_key)
-            cfg = {}
-            if system_instruction:
-                cfg["system_instruction"] = system_instruction
-            res = client.models.generate_content(
-                model=self.model,
-                contents=prompt,
-                config=types.GenerateContentConfig(**cfg) if cfg else None
-            )
-            if res and res.text:
-                return res.text
-        except Exception:
-            pass
+        models_to_try = [
+            self.model,
+            "gemini-3-flash-preview",
+            "gemini-3.1-flash-lite-preview",
+            "gemma-4-26b-a4b-it",
+            "gemini-3.8-flash",
+            "gemini-flash-latest",
+        ]
+        unique_models = [m for m in dict.fromkeys(models_to_try) if m]
 
-        url = f"https://generativelanguage.googleapis.com/v1beta/models/{self.model}:generateContent?key={self.api_key}"
-        contents = []
-        if system_instruction:
-            contents.append({"role": "user", "parts": [{"text": f"SYSTEM: {system_instruction}"}]})
-        contents.append({"role": "user", "parts": [{"text": prompt}]})
-        resp = requests.post(url, json={"contents": contents}, timeout=self.timeout)
-        resp.raise_for_status()
-        data = resp.json()
-        return data["candidates"][0]["content"]["parts"][0]["text"]
+        last_error = None
+        for m in unique_models:
+            try:
+                url = f"https://generativelanguage.googleapis.com/v1beta/models/{m}:generateContent?key={self.api_key}"
+                contents = []
+                if system_instruction:
+                    contents.append({"role": "user", "parts": [{"text": f"SYSTEM: {system_instruction}"}]})
+                contents.append({"role": "user", "parts": [{"text": prompt}]})
+                resp = requests.post(url, json={"contents": contents}, timeout=12)
+                if resp.status_code == 200:
+                    data = resp.json()
+                    candidates = data.get("candidates", [])
+                    if candidates and "content" in candidates[0]:
+                        parts = candidates[0]["content"].get("parts", [])
+                        if parts and "text" in parts[0]:
+                            return parts[0]["text"]
+                last_error = f"{m} HTTP {resp.status_code}: {resp.text[:100]}"
+            except Exception as e:
+                last_error = e
+
+        raise RuntimeError(f"All Gemini models failed. Last error: {last_error}")
 
     def _call_anthropic(self, prompt: str, system_instruction: Optional[str]) -> str:
         url = "https://api.anthropic.com/v1/messages"
