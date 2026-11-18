@@ -1,5 +1,11 @@
 # 🤖 Patch Pilot
 
+[![Documentation](https://img.shields.io/badge/Documentation-Apple%20HIG%20Style-blue?style=for-the-badge&logo=vercel)](https://agent-docs-coral.vercel.app#patch-pilot)
+[![GitHub Stars](https://img.shields.io/github/stars/shubhransh-gupta/patch-pilot?style=for-the-badge&color=30d158)](https://github.com/shubhransh-gupta/patch-pilot/stargazers)
+[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg?style=for-the-badge)](https://opensource.org/licenses/MIT)
+
+> **📖 Live Documentation & Interactive FAQs:** [https://agent-docs-coral.vercel.app#patch-pilot](https://agent-docs-coral.vercel.app#patch-pilot)
+
 An autonomous test-driven code healing and bug patching agent with **universal model support**.
 
 Patch Pilot inspects your local repository, analyzes bug descriptions, pinpoints root-cause files, iteratively applies patches, executes your test suite, and feeds back error stack traces until tests pass and changes are committed cleanly to Git.
